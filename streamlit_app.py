@@ -1,39 +1,34 @@
+import streamlit as st
 import pandas as pd
-from sklearn.cluster import KMeans
-import pickle
+import joblib
 
-# =====================================================
-# 1. Load dataset using correct separator
-# =====================================================
-df = pd.read_csv("winequality-red.csv", sep=';')
+st.title("🚢 Titanic Survival Predictor")
 
-# Keep only numeric columns
-df_numeric = df.select_dtypes(include=['float64', 'int64'])
+# Load model & features
+model = joblib.load("titanic_model.pkl")
+features = joblib.load("titanic_features.pkl")
 
-print("Numeric columns found:", df_numeric.columns)
+st.subheader("Enter Passenger Details")
 
-# =====================================================
-# 2. Train K-Means (k=3)
-# =====================================================
-kmeans = KMeans(n_clusters=3, random_state=42)
-kmeans.fit(df_numeric)
+pclass = st.selectbox("Passenger Class (1 = First, 3 = Third)", [1, 2, 3])
+sex = st.radio("Sex", ["male", "female"])
+age = st.number_input("Age", min_value=0, max_value=100, value=25)
+fare = st.number_input("Fare", min_value=0.0, max_value=600.0, value=50.0)
 
-print("K-Means model trained with k=3")
+if st.button("Predict Survival"):
+    # Convert inputs into DataFrame
+    input_df = pd.DataFrame([{
+        "Pclass": pclass,
+        "Sex": 0 if sex == "male" else 1,
+        "Age": age,
+        "Fare": fare
+    }])
 
-# =====================================================
-# 3. Save MODEL as PKL
-# =====================================================
-model_filename = "kmeans_wine_model.pkl"
-with open(model_filename, "wb") as f:
-    pickle.dump(kmeans, f)
+    # Predict
+    pred = model.predict(input_df)[0]
+    prob = model.predict_proba(input_df)[0][1]
 
-print(f"Model saved as {model_filename}")
-
-# =====================================================
-# 4. Save FEATURES as PKL
-# =====================================================
-features_filename = "wine_features.pkl"
-with open(features_filename, "wb") as f:
-    pickle.dump(list(df_numeric.columns), f)
-
-print(f"Features saved as {features_filename}")
+    if pred == 1:
+        st.success(f"🎉 Survived! (Probability: {prob:.2f})")
+    else:
+        st.error(f"💀 Did NOT survive (Probability: {prob:.2f})")
